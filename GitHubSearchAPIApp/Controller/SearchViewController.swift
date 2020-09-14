@@ -121,7 +121,7 @@ extension SearchViewController : UISearchResultsUpdating, UISearchBarDelegate {
                         self.searchView.displayView(isTableView: true, isTextLabel: false, isActivityIndicatorView: false)
                     } else {
                         self.searchView.displayView(isTableView: false, isTextLabel: true, isActivityIndicatorView: false)
-                        self.searchView.textLabel.text = "\"\(keyword)\"" + "SEARCH_EMPTY_MESSAGE".localized
+                        self.searchView.textLabel.text = "\"\(keyword)\"\n" + "SEARCH_EMPTY_MESSAGE".localized
                     }
                     self.searchView.activityIndicatorView.stopAnimating()
                 }

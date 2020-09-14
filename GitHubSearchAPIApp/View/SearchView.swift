@@ -47,7 +47,8 @@ class SearchView : UIView {
     }
 
     func setupTextLabel() {
-        textLabel = UILabel(frame: CGRect(x: 0, y: 0, width: frame.width, height: frame.height))
+        textLabel = UILabel(frame: CGRect(x: 0, y: 0, width: frame.width - 10, height: frame.height))
+        textLabel.numberOfLines = 5
         textLabel.textAlignment = .center
         textLabel.center = self.center
         textLabel.font = UIFont.systemFont(ofSize: 16, weight: .bold)
