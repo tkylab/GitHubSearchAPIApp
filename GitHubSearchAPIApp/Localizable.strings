@@ -1,0 +1,17 @@
+/* 
+  Localizable.strings
+  GitHubSearchAPIApp
+
+  Created by thiratani on 2020/09.
+  Copyright © 2020 none. All rights reserved.
+*/
+
+"YES" = "はい";
+"NO" = "いいえ";
+"ERROR" = "エラー";
+"SEARCH" = "検索";
+"BACK" = "戻る";
+"CLOSE" = "閉じる";
+"ENTER_SEARCH_KEYWORD" = "キーワードを入力";
+"SEARCH_EMPTY_MESSAGE" = "の検索に一致するものはありませんでした。";
+"SEARCH_RESULTS" = "件";
