@@ -18,6 +18,11 @@ class SearchViewController: UIViewController {
     var searchResults = [SearchResult]()
 
     var searchView: SearchView!
+    var searchKeyword: String = ""
+    var searchResultTotalCount: Int = 0
+    var searchResultPage: Int = 1
+    
+    private var loadStatus: String = "initial"
 
     override func loadView() {
         super.loadView()
@@ -85,39 +90,22 @@ extension SearchViewController : UISearchResultsUpdating, UISearchBarDelegate {
         searchView.displayView(isTableView: false, isTextLabel: false, isActivityIndicatorView: true)
         searchView.activityIndicatorView.startAnimating()
         if let keyword = searchBar.text {
-            let urlStr = "https://api.github.com/search/users?q=\(keyword)"
-            let encodeUrlString: String = urlStr.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!
-            let url = URL(string: encodeUrlString)!
-            let task = URLSession.shared.dataTask(with: url, completionHandler: {data, response, error in
-                if let error = error {
-                    DispatchQueue.main.async() { () -> Void in
-                        let alert = UIAlertController.singleBtnAlertWithTitle(title: "ERROR".localized, message: error.localizedDescription, actionTitle: "CLOSE".localized, completion: nil)
-                        self.present(alert, animated: true, completion: nil)
-                    }
+            self.searchKeyword = keyword
+            let searchViewModel = SearchViewModel()
+            self.searchResults = [SearchResult]()
+            self.searchResultPage = 1
+            searchViewModel.search(keyword: keyword, page: self.searchResultPage, completion: { result in
+                if let error = result.error {
+                    let alert = UIAlertController.singleBtnAlertWithTitle(title: "ERROR".localized, message: error.localizedDescription, actionTitle: "CLOSE".localized, completion: nil)
+                    self.present(alert, animated: true, completion: nil)
                     return
                 }
 
-                guard let data = data, let response = response as? HTTPURLResponse else {
-                    NSLog("data or response is nil")
-                    return
-                }
-
-                guard response.statusCode == 200 else {
-                    NSLog("Server Error: \(response.statusCode)")
-                    return
-                }
-                
-                let json = JSON(data)
-                let items = json["items"].array
-                self.searchResults = [SearchResult]()
-                items?.forEach { item in
-                    let result = SearchResult(json: item)
-                    print(result.login)
-                    self.searchResults.append(result)
-                }
                 DispatchQueue.main.async() { () -> Void in
+                    self.searchResults.append(contentsOf: result.data)
+                    self.searchResultTotalCount = result.total_count
                     self.searchView.tableView.reloadData()
-                    if self.searchResults.count > 0 {
+                    if result.total_count > 0 {
                         self.searchView.displayView(isTableView: true, isTextLabel: false, isActivityIndicatorView: false)
                     } else {
                         self.searchView.displayView(isTableView: false, isTextLabel: true, isActivityIndicatorView: false)
@@ -126,7 +114,6 @@ extension SearchViewController : UISearchResultsUpdating, UISearchBarDelegate {
                     self.searchView.activityIndicatorView.stopAnimating()
                 }
             })
-            task.resume()
         }
     }
 
@@ -140,7 +127,7 @@ extension SearchViewController : UISearchResultsUpdating, UISearchBarDelegate {
 extension SearchViewController : UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        return "\(self.searchResults.count) " + "SEARCH_RESULTS".localized
+        return "\(self.searchResults.count) " + " / \(self.searchResultTotalCount) " + "SEARCH_RESULTS".localized
     }
     
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
@@ -174,5 +161,44 @@ extension SearchViewController : UITableViewDelegate, UITableViewDataSource {
         let searchResult = self.searchResults[indexPath.row]
         let detailVC = DetailViewController(searchResult: searchResult)
         self.navigationController?.pushViewController(detailVC, animated: true)
+    }
+    
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        let currentOffsetY = scrollView.contentOffset.y
+        let maximumOffset = scrollView.contentSize.height - scrollView.frame.height
+        let distanceToBottom = maximumOffset - currentOffsetY
+//        print("currentOffsetY: \(currentOffsetY)")
+//        print("maximumOffset: \(maximumOffset)")
+//        print("distanceToBottom: \(distanceToBottom)")
+        if distanceToBottom < 500 {
+            print(loadStatus)
+            guard loadStatus != "fetching" && loadStatus != "full" else { return }
+
+//            if self.searchResultTotalCount == self.searchResults.count {
+//                self.loadStatus = "full"
+//                return
+//            }
+//
+            loadStatus = "fetching"
+
+            print(self.searchResultTotalCount)
+            print(self.searchResults.count)
+
+            let searchViewModel = SearchViewModel()
+            searchViewModel.search(keyword: self.searchKeyword, page: self.searchResultPage, completion: { result in
+                if let error = result.error {
+                    let alert = UIAlertController.singleBtnAlertWithTitle(title: "ERROR".localized, message: error.localizedDescription, actionTitle: "CLOSE".localized, completion: nil)
+                    self.present(alert, animated: true, completion: nil)
+                    return
+                }
+                
+                self.searchResults.append(contentsOf: result.data)
+                DispatchQueue.main.async() { () -> Void in
+                    self.searchView.tableView.reloadData()
+                    self.loadStatus = "loadmore"
+                    self.searchResultPage += 1
+                }
+            })
+        }
     }
 }
