@@ -11,11 +11,7 @@ import SwiftyJSON
 
 class SearchViewController: UIViewController {
     
-    var textView = UITextView()
-    var tableView = UITableView()
-    var searchBar = UISearchBar()
-    var activityIndicatorView = UIActivityIndicatorView()
-    var searchResults = [SearchResult]()
+    var searchResults: [SearchResult] = [SearchResult]()
 
     var searchView: SearchView!
     var searchKeyword: String = ""
@@ -27,9 +23,8 @@ class SearchViewController: UIViewController {
     override func loadView() {
         super.loadView()
         searchView = SearchView(frame: view.frame)
-        searchView.frame = CGRect(x: 0, y: 0, width: view.bounds.width, height: view.bounds.height)
-        self.view.addSubview(searchView)
-        self.view.backgroundColor = UIColor.white
+        view.addSubview(searchView)
+        view.backgroundColor = UIColor.white
     }
     
     required init() {
@@ -48,6 +43,7 @@ class SearchViewController: UIViewController {
         super.viewDidLoad()
         setupNavigationBar()
         setupTableView()
+        searchView.displayView(isTableView: false, isTextLabel: false, isActivityIndicatorView: false)
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -87,23 +83,26 @@ extension SearchViewController : UISearchResultsUpdating, UISearchBarDelegate {
     }
     
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        guard let keyword = searchBar.text else { return }
+        
+        self.searchResultPage = 1
+        self.searchResults = [SearchResult]()
+        self.searchKeyword = ""
+        
         searchView.displayView(isTableView: false, isTextLabel: false, isActivityIndicatorView: true)
         searchView.activityIndicatorView.startAnimating()
-        if let keyword = searchBar.text {
-            self.searchKeyword = keyword
-            let searchViewModel = SearchViewModel()
-            self.searchResults = [SearchResult]()
-            self.searchResultPage = 1
-            searchViewModel.search(keyword: keyword, page: self.searchResultPage, completion: { result in
-                if let error = result.error {
-                    let alert = UIAlertController.singleBtnAlertWithTitle(title: "ERROR".localized, message: error.localizedDescription, actionTitle: "CLOSE".localized, completion: nil)
-                    self.present(alert, animated: true, completion: nil)
-                    return
-                }
+        self.searchKeyword = keyword
+
+        let searchViewModel = SearchViewModel()
+        searchViewModel.search(keyword: keyword, page: self.searchResultPage, completion: { result in
+            if let error = result.error {
+                let alert = UIAlertController.singleBtnAlertWithTitle(title: "ERROR".localized, message: error.localizedDescription, actionTitle: "CLOSE".localized, completion: nil)
+                self.present(alert, animated: true, completion: nil)
+            } else {
+                self.searchResults.append(contentsOf: result.data)
+                self.searchResultTotalCount = result.total_count
 
                 DispatchQueue.main.async() { () -> Void in
-                    self.searchResults.append(contentsOf: result.data)
-                    self.searchResultTotalCount = result.total_count
                     self.searchView.tableView.reloadData()
                     if result.total_count > 0 {
                         self.searchView.displayView(isTableView: true, isTextLabel: false, isActivityIndicatorView: false)
@@ -111,10 +110,10 @@ extension SearchViewController : UISearchResultsUpdating, UISearchBarDelegate {
                         self.searchView.displayView(isTableView: false, isTextLabel: true, isActivityIndicatorView: false)
                         self.searchView.textLabel.text = "\"\(keyword)\"\n" + "SEARCH_EMPTY_MESSAGE".localized
                     }
-                    self.searchView.activityIndicatorView.stopAnimating()
                 }
-            })
-        }
+            }
+            self.searchView.activityIndicatorView.stopAnimating()
+        })
     }
 
     func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
@@ -167,22 +166,10 @@ extension SearchViewController : UITableViewDelegate, UITableViewDataSource {
         let currentOffsetY = scrollView.contentOffset.y
         let maximumOffset = scrollView.contentSize.height - scrollView.frame.height
         let distanceToBottom = maximumOffset - currentOffsetY
-//        print("currentOffsetY: \(currentOffsetY)")
-//        print("maximumOffset: \(maximumOffset)")
-//        print("distanceToBottom: \(distanceToBottom)")
         if distanceToBottom < 500 {
-            print(loadStatus)
             guard loadStatus != "fetching" && loadStatus != "full" else { return }
 
-//            if self.searchResultTotalCount == self.searchResults.count {
-//                self.loadStatus = "full"
-//                return
-//            }
-//
             loadStatus = "fetching"
-
-            print(self.searchResultTotalCount)
-            print(self.searchResults.count)
 
             let searchViewModel = SearchViewModel()
             searchViewModel.search(keyword: self.searchKeyword, page: self.searchResultPage, completion: { result in
@@ -191,8 +178,11 @@ extension SearchViewController : UITableViewDelegate, UITableViewDataSource {
                     self.present(alert, animated: true, completion: nil)
                     return
                 }
-                
+
                 self.searchResults.append(contentsOf: result.data)
+                if self.searchResultTotalCount == self.searchResults.count {
+                    self.loadStatus = "full"
+                }
                 DispatchQueue.main.async() { () -> Void in
                     self.searchView.tableView.reloadData()
                     self.loadStatus = "loadmore"

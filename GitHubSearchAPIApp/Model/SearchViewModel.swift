@@ -19,13 +19,20 @@ struct Result {
 class SearchViewModel {
     
     func search(keyword: String, page: Int, completion: @escaping ((Result) -> Void)) {
+        
+        let config = URLSessionConfiguration.default
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        config.waitsForConnectivity = false
+        let session = URLSession(configuration: config, delegate: .none, delegateQueue: OperationQueue.main)
+        
         let urlStr = "https://api.github.com/search/users?q=\(keyword)&per_page=30&page=\(page)"
         let encodeUrlString: String = urlStr.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!
         guard let url = URL(string: encodeUrlString) else { return }
 
         var result = Result()
         
-        let task = URLSession.shared.dataTask(with: url, completionHandler: {data, response, error in
+        let task = session.dataTask(with: url, completionHandler: {data, response, error in
+            
             if error != nil {
                 result.error = error
             }
@@ -34,7 +41,10 @@ class SearchViewModel {
                 result.response = response as? HTTPURLResponse
             }
 
-            guard let data = data else { return }
+            guard let data = data else {
+                completion(result)
+                return
+            }
             
             let json = JSON(data)
             result.total_count = json["total_count"].int ?? 0
@@ -51,4 +61,5 @@ class SearchViewModel {
         })
         task.resume()
     }
+    
 }
