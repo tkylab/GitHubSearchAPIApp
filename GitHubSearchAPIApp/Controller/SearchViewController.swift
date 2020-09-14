@@ -12,6 +12,7 @@ import SwiftyJSON
 class SearchViewController: UIViewController {
     
     var searchResults: [SearchResult] = [SearchResult]()
+    let searchViewModel = SearchViewModel()
 
     var searchView: SearchView!
     var searchKeyword: String = ""
@@ -85,26 +86,29 @@ extension SearchViewController : UISearchResultsUpdating, UISearchBarDelegate {
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         guard let keyword = searchBar.text else { return }
         
-        self.searchResultPage = 1
-        self.searchResults = [SearchResult]()
-        self.searchKeyword = ""
+        print("searchBarSearchButtonClicked")
         
-        searchView.displayView(isTableView: false, isTextLabel: false, isActivityIndicatorView: true)
-        searchView.activityIndicatorView.startAnimating()
+        self.searchResultPage = 1
+        self.searchResultTotalCount = 0
+        self.searchResults = [SearchResult]()
         self.searchKeyword = keyword
 
-        let searchViewModel = SearchViewModel()
+        searchView.displayView(isTableView: false, isTextLabel: false, isActivityIndicatorView: true)
+        searchView.activityIndicatorView.startAnimating()
+
         searchViewModel.search(keyword: keyword, page: self.searchResultPage, completion: { result in
             if let error = result.error {
                 let alert = UIAlertController.singleBtnAlertWithTitle(title: "ERROR".localized, message: error.localizedDescription, actionTitle: "CLOSE".localized, completion: nil)
                 self.present(alert, animated: true, completion: nil)
             } else {
-                self.searchResults.append(contentsOf: result.data)
+                self.searchResults += result.data
                 self.searchResultTotalCount = result.total_count
+                self.searchView.tableView.reloadData()
+                
+                self.searchResultPage += 1
 
                 DispatchQueue.main.async() { () -> Void in
-                    self.searchView.tableView.reloadData()
-                    if result.total_count > 0 {
+                    if self.searchResults.count > 0 {
                         self.searchView.displayView(isTableView: true, isTextLabel: false, isActivityIndicatorView: false)
                     } else {
                         self.searchView.displayView(isTableView: false, isTextLabel: true, isActivityIndicatorView: false)
@@ -170,8 +174,6 @@ extension SearchViewController : UITableViewDelegate, UITableViewDataSource {
             guard loadStatus != "fetching" && loadStatus != "full" else { return }
 
             loadStatus = "fetching"
-
-            let searchViewModel = SearchViewModel()
             searchViewModel.search(keyword: self.searchKeyword, page: self.searchResultPage, completion: { result in
                 if let error = result.error {
                     let alert = UIAlertController.singleBtnAlertWithTitle(title: "ERROR".localized, message: error.localizedDescription, actionTitle: "CLOSE".localized, completion: nil)
