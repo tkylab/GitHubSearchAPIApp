@@ -100,20 +100,21 @@ extension SearchViewController : UISearchResultsUpdating, UISearchBarDelegate {
             if let error = result.error {
                 let alert = UIAlertController.singleBtnAlertWithTitle(title: "ERROR".localized, message: error.localizedDescription, actionTitle: "CLOSE".localized, completion: nil)
                 self.present(alert, animated: true, completion: nil)
-            } else {
-                self.searchResults += result.data
-                self.searchResultTotalCount = result.total_count
-                self.searchView.tableView.reloadData()
-                
-                self.searchResultPage += 1
+                return
+            }
+            
+            self.searchResults += result.data
+            self.searchResultTotalCount = result.total_count
+            self.searchView.tableView.reloadData()
+            
+            self.searchResultPage += 1
 
-                DispatchQueue.main.async() { () -> Void in
-                    if self.searchResults.count > 0 {
-                        self.searchView.displayView(isTableView: true, isTextLabel: false, isActivityIndicatorView: false)
-                    } else {
-                        self.searchView.displayView(isTableView: false, isTextLabel: true, isActivityIndicatorView: false)
-                        self.searchView.textLabel.text = "\"\(keyword)\"\n" + "SEARCH_EMPTY_MESSAGE".localized
-                    }
+            DispatchQueue.main.async() { () -> Void in
+                if self.searchResults.count > 0 {
+                    self.searchView.displayView(isTableView: true, isTextLabel: false, isActivityIndicatorView: false)
+                } else {
+                    self.searchView.displayView(isTableView: false, isTextLabel: true, isActivityIndicatorView: false)
+                    self.searchView.textLabel.text = "\"\(keyword)\"\n" + "SEARCH_EMPTY_MESSAGE".localized
                 }
             }
             self.searchView.activityIndicatorView.stopAnimating()
